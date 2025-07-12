@@ -10,7 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	//"github.com/ChrisR/pokecache"
+	//"github.com/ChrisR/pokedex/internal/pokecache"
 )
 
 type Config struct {
