@@ -10,7 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	//"pokecache"
+	//"github.com/ChrisR/pokecache"
 )
 
 type Config struct {
@@ -25,7 +25,7 @@ type cliCommand struct {
 }
 
 func main() {
-	//NewCache()
+
 	commandMap := getCommands()
 	scanner := bufio.NewScanner(os.Stdin)
 	config := &Config{next: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"}
