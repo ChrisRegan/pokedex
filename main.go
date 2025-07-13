@@ -10,12 +10,15 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	//"github.com/ChrisR/pokedex/internal/pokecache"
+	"time"
+
+	"github.com/ChrisR/pokedex/internal/pokecache"
 )
 
 type Config struct {
-	next string
-	prev string
+	next  string
+	prev  string
+	cache pokecache.Cache
 }
 
 type cliCommand struct {
@@ -25,18 +28,25 @@ type cliCommand struct {
 }
 
 func main() {
+	var interval time.Duration = 5
 
 	commandMap := getCommands()
 	scanner := bufio.NewScanner(os.Stdin)
-	config := &Config{next: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"}
+	config := &Config{next: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20", cache: pokecache.NewCache(interval)}
 
 	for {
 		fmt.Print("\nPokedex > ")
 		scanner.Scan()
 
 		commands := cleanInput(scanner.Text())
+		userCommand, ok := commandMap[commands[0]]
 		//fmt.Print("Your command was: ", commands[0])
-		commandMap[commands[0]].callback(config)
+
+		if ok {
+			userCommand.callback(config)
+		} else {
+			fmt.Println("invalid command")
+		}
 	}
 }
 
@@ -77,20 +87,27 @@ func cleanInput(text string) []string {
 }
 
 func requestData(url string, config *Config) error {
-	res, err := http.Get(url)
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
-	body, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
-		return err
-	}
-	if err != nil {
-		log.Fatal(err)
-		return err
+
+	body, found := config.cache.Get(url)
+
+	if !found {
+		res, err := http.Get(url)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		body, err = io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode > 299 {
+			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+			return err
+		}
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+
+		config.cache.Add(url, body)
 	}
 	//fmt.Printf("%s", body)
 
@@ -106,7 +123,7 @@ func requestData(url string, config *Config) error {
 	}
 
 	var resp response
-	err = json.Unmarshal(body, &resp)
+	err := json.Unmarshal(body, &resp)
 	if err != nil {
 		fmt.Println("error:", err)
 		return err
